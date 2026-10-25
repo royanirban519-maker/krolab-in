@@ -2,19 +2,22 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   ShieldCheck, Loader2, CheckCircle2, XCircle, Clock, IndianRupee,
   Crown, ArrowLeft, AlertTriangle, History, Users, Wallet, Lock, BadgeCheck,
+  Activity, Eye, MousePointerClick, User as UserIcon, TrendingUp, Search,
+  MessageSquare, Phone, Heart,
 } from 'lucide-react';
 import {
-  adminService, upiService,
-  type UpiLog, type BrandRow, type AuditEntry, type AuthRole,
+  adminService, upiService, telemetry as telemetryService,
+  type UpiLog, type BrandRow, type AuditEntry, type AuthRole, type ActivityEntry,
 } from '@/lib/supabase';
 
-type Tab = 'utr' | 'brands' | 'audit';
+type Tab = 'utr' | 'brands' | 'audit' | 'activity';
 
 export default function AdminControlRoom({ onExit }: { onExit: () => void }) {
   const [tab, setTab] = useState<Tab>('utr');
   const [utrs, setUtrs] = useState<UpiLog[]>([]);
   const [brands, setBrands] = useState<BrandRow[]>([]);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
+  const [activity, setActivity] = useState<ActivityEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
@@ -24,14 +27,16 @@ export default function AdminControlRoom({ onExit }: { onExit: () => void }) {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const [u, b, a] = await Promise.all([
+      const [u, b, a, act] = await Promise.all([
         adminService.listAllUtrs(),
         adminService.listBrands(),
         adminService.listAuditLog(),
+        telemetryService.listActivity(100),
       ]);
       setUtrs(u);
       setBrands(b);
       setAudit(a);
+      setActivity(act);
     } catch (e) {
       flash('err', (e as Error).message || 'Failed to load data');
     } finally {
@@ -115,6 +120,7 @@ export default function AdminControlRoom({ onExit }: { onExit: () => void }) {
           {([
             { k: 'utr' as const, label: 'UTR Queue', icon: Wallet, count: pending.length },
             { k: 'brands' as const, label: 'Brands', icon: Users, count: brands.length },
+            { k: 'activity' as const, label: 'Activity', icon: Activity, count: activity.length },
             { k: 'audit' as const, label: 'Audit Log', icon: History, count: audit.length },
           ]).map(t => {
             const Icon = t.icon;
@@ -152,6 +158,8 @@ export default function AdminControlRoom({ onExit }: { onExit: () => void }) {
           />
         ) : tab === 'brands' ? (
           <BrandPanel brands={brands} busy={busy} onSetRole={setRole} />
+        ) : tab === 'activity' ? (
+          <ActivityPanel entries={activity} />
         ) : (
           <AuditPanel entries={audit} />
         )}
@@ -398,6 +406,110 @@ function BrandPanel({
       </div>
     </section>
   );
+}
+
+// ── ACTIVITY / TELEMETRY PANEL ──────────────────────────────────────
+
+function ActivityPanel({ entries }: { entries: ActivityEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <div className="rounded-2xl border border-ink-600 bg-ink-800 p-10 text-center">
+        <Activity className="w-10 h-10 text-sand-500 mx-auto mb-3" />
+        <p className="text-sand-300 font-medium">No profile activity tracked yet</p>
+        <p className="text-sand-500 text-sm mt-1">Profile views, contact clicks, and user activity will appear here in real time.</p>
+      </div>
+    );
+  }
+
+  const views = entries.filter(e => e.activityType === 'profile_view').length;
+  const clicks = entries.filter(e => e.activityType.endsWith('_click')).length;
+  const uniqueUsers = new Set(entries.map(e => e.actorEmail).filter(Boolean)).size;
+  const topTargets = Object.entries(
+    entries.reduce<Record<string, number>>((acc, e) => {
+      if (e.targetName) acc[e.targetName] = (acc[e.targetName] ?? 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard icon={Eye} label="Profile Views" value={views} accent="gold" />
+        <StatCard icon={MousePointerClick} label="Contact Clicks" value={clicks} accent="green" />
+        <StatCard icon={UserIcon} label="Unique Users" value={uniqueUsers} accent="ember" />
+        <StatCard icon={TrendingUp} label="Total Events" value={entries.length} accent="gold" />
+      </div>
+
+      {topTargets.length > 0 && (
+        <div className="rounded-2xl border border-ink-600 bg-ink-800 p-5">
+          <h3 className="font-display text-sm font-bold text-sand-200 mb-3 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-gold-400" /> Most Viewed Profiles
+          </h3>
+          <div className="space-y-2">
+            {topTargets.map(([name, count]) => (
+              <div key={name} className="flex items-center justify-between">
+                <span className="text-sm text-sand-200">{name}</span>
+                <div className="flex items-center gap-2">
+                  <div className="w-32 h-1.5 bg-ink-700 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-gold-500 to-gold-700" style={{ width: `${(count / topTargets[0][1]) * 100}%` }} />
+                  </div>
+                  <span className="text-xs text-gold-300 font-semibold w-8 text-right">{count}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <section>
+        <h2 className="font-display text-2xl font-bold text-sand-50 mb-1 flex items-center gap-2">
+          <Activity className="w-5 h-5 text-gold-500" /> Profile Activity & Click Telemetry
+        </h2>
+        <p className="text-sm text-sand-500 mb-5">Real-time tracking of profile views, contact clicks, and user activity</p>
+        <div className="rounded-2xl border border-ink-600 bg-ink-800 overflow-hidden">
+          {entries.map((e, i) => {
+            const Icon = activityIcon(e.activityType);
+            const tone = activityTone(e.activityType);
+            return (
+              <div key={e.id} className={`flex items-start gap-3 px-4 py-3.5 ${i > 0 ? 'border-t border-ink-700' : ''}`}>
+                <Icon className={`w-4 h-4 mt-0.5 shrink-0 ${tone}`} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-sand-100">
+                    <span className="font-semibold capitalize">{e.activityType.replace(/_/g, ' ')}</span>
+                    {e.targetName && <span className="text-sand-500"> · {e.targetName}</span>}
+                  </p>
+                  <p className="text-[11px] text-sand-500 mt-0.5">
+                    {e.actorEmail ?? 'anonymous'} · {timeAgo(e.createdAt)}
+                  </p>
+                </div>
+                {Object.keys(e.meta).length > 0 && (
+                  <span className="text-[10px] text-sand-600 hidden md:inline">{Object.entries(e.meta).map(([k, v]) => `${k}: ${String(v)}`).join(' · ')}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function activityIcon(type: string) {
+  if (type === 'profile_view') return Eye;
+  if (type === 'whatsapp_click') return MessageSquare;
+  if (type === 'phone_click') return Phone;
+  if (type === 'search') return Search;
+  if (type === 'shortlist') return Heart;
+  if (type === 'login') return UserIcon;
+  return MousePointerClick;
+}
+
+function activityTone(type: string): string {
+  if (type === 'profile_view') return 'text-gold-400';
+  if (type.endsWith('_click')) return 'text-green-400';
+  if (type === 'search' || type === 'shortlist') return 'text-ember-400';
+  if (type === 'login') return 'text-sand-300';
+  return 'text-sand-400';
 }
 
 // ── AUDIT PANEL ────────────────────────────────────────────────────

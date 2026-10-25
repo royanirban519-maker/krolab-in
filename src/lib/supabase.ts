@@ -87,8 +87,30 @@ export type BrandRow = {
   venueName?: string | null;
   pincode?: string | null;
   phone?: string | null;
+  brandType?: string | null;
+  address?: string | null;
+  venueImages?: string[];
   proExpiresAt?: string | null;
   createdAt?: string;
+};
+
+export type BrandProfileInput = {
+  brandName: string;
+  phone: string;
+  address: string;
+  brandType: string;
+  venueImages?: string[];
+};
+
+export type ActivityEntry = {
+  id: string;
+  actorId: string | null;
+  actorEmail: string | null;
+  targetProfileId: string | null;
+  targetName: string | null;
+  activityType: string;
+  meta: Record<string, unknown>;
+  createdAt: string;
 };
 
 export type AuditEntry = {
@@ -113,6 +135,7 @@ const LS = {
   invites: 'krolab_invites',
   upiLogs: 'krolab_upi_logs',
   auditLog: 'krolab_audit_log',
+  activity: 'krolab_activity',
 };
 
 function lsGet<T>(key: string, fallback: T): T {
@@ -501,5 +524,127 @@ export const adminService = {
       createdAt: new Date().toISOString(),
     });
     lsSet(LS.auditLog, list);
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Brand Dashboard Service — Brand Hub profile + campaigns
+// ─────────────────────────────────────────────────────────────────────────
+export const brandHubService = {
+  async saveBrandProfile(userId: string, input: BrandProfileInput): Promise<void> {
+    if (supabase) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          venue_name: input.brandName,
+          phone: input.phone,
+          address: input.address,
+          brand_type: input.brandType,
+          venue_images: input.venueImages ?? [],
+        })
+        .eq('id', userId);
+      if (error) throw new Error(error.message);
+      return;
+    }
+    const user = lsGet<AuthUser>(LS.user, null);
+    if (user) {
+      user.venueName = input.brandName;
+      user.phone = input.phone;
+      lsSet(LS.user, user);
+    }
+  },
+
+  async getBrandProfile(userId: string): Promise<BrandRow | null> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      if (error || !data) return null;
+      return {
+        id: data.id as string,
+        email: data.email as string,
+        fullName: (data.full_name as string) ?? '',
+        role: (data.role as AuthRole) ?? 'free_brand',
+        venueName: (data.venue_name as string) ?? null,
+        pincode: (data.pincode as string) ?? null,
+        phone: (data.phone as string) ?? null,
+        brandType: (data.brand_type as string) ?? null,
+        address: (data.address as string) ?? null,
+        venueImages: ((data.venue_images as string[]) ?? []) as string[],
+        proExpiresAt: (data.pro_expires_at as string) ?? null,
+        createdAt: data.created_at as string,
+      };
+    }
+    const user = lsGet<AuthUser>(LS.user, null);
+    if (!user || user.id !== userId) return null;
+    return {
+      id: user.id, email: user.email, fullName: user.fullName, role: user.role,
+      venueName: user.venueName, pincode: user.pincode, phone: user.phone,
+      brandType: 'Hotel', address: 'Kalewadi, Pune', venueImages: [],
+      proExpiresAt: null,
+    };
+  },
+};
+
+// ─────────────────────────────────────────────────────────────────────────
+// Telemetry Service — Profile activity & click tracking
+// ─────────────────────────────────────────────────────────────────────────
+export const telemetry = {
+  logActivity(params: {
+    actorId?: string | null;
+    actorEmail?: string | null;
+    targetProfileId?: string | null;
+    targetName?: string | null;
+    activityType: string;
+    meta?: Record<string, unknown>;
+  }): void {
+    const entry: ActivityEntry = {
+      id: uid(),
+      actorId: params.actorId ?? null,
+      actorEmail: params.actorEmail ?? null,
+      targetProfileId: params.targetProfileId ?? null,
+      targetName: params.targetName ?? null,
+      activityType: params.activityType,
+      meta: params.meta ?? {},
+      createdAt: new Date().toISOString(),
+    };
+    // Best-effort: push to localStorage always, then try to flush to Supabase
+    const list = lsGet<ActivityEntry[]>(LS.activity, []);
+    list.unshift(entry);
+    lsSet(LS.activity, list.slice(0, 200));
+    if (supabase) {
+      supabase.from('profile_activity').insert({
+        actor_id: entry.actorId,
+        actor_email: entry.actorEmail,
+        target_profile_id: entry.targetProfileId,
+        target_name: entry.targetName,
+        activity_type: entry.activityType,
+        meta: entry.meta,
+      }).then(() => {}, () => {});
+    }
+  },
+
+  async listActivity(limit = 100): Promise<ActivityEntry[]> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('profile_activity')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (error || !data) return lsGet<ActivityEntry[]>(LS.activity, []);
+      return (data as Record<string, unknown>[]).map(r => ({
+        id: r.id as string,
+        actorId: (r.actor_id as string) ?? null,
+        actorEmail: (r.actor_email as string) ?? null,
+        targetProfileId: (r.target_profile_id as string) ?? null,
+        targetName: (r.target_name as string) ?? null,
+        activityType: r.activity_type as string,
+        meta: (r.meta as Record<string, unknown>) ?? {},
+        createdAt: r.created_at as string,
+      }));
+    }
+    return lsGet<ActivityEntry[]>(LS.activity, []);
   },
 };

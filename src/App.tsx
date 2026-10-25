@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Play, Eye, Lock, Star, Check, BadgeCheck, Instagram, Facebook, Youtube, MessageCircle, Phone, MapPin, Search, Users, Building2, Handshake, Sparkles, IndianRupee, TrendingUp, Video, Filter, ArrowRight, X, ShieldCheck, Crown, Zap, Heart, UserPlus, Briefcase, ChevronRight, ArrowLeft, Sun, Moon, Image as ImageIcon, Film, Send, MessageSquare, Pencil, CheckCircle2, Home, Sparkle, Plus, Clapperboard, Wallet, LogIn, LayoutDashboard, ClipboardList, Calendar, ChevronLeft, Loader2 } from 'lucide-react';
-import { authService, portfolioService, shortlistService, inviteService, upiService, adminService, hasSupabase, type AuthUser, type AuthRole, type NewCreator, type ShortlistEntry, type InviteEntry, type UpiLog } from '@/lib/supabase';
+import { authService, portfolioService, shortlistService, inviteService, upiService, adminService, brandHubService, telemetry, hasSupabase, type AuthUser, type AuthRole, type NewCreator, type ShortlistEntry, type InviteEntry, type UpiLog } from '@/lib/supabase';
 import AdminControlRoom from '@/AdminControlRoom';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────
 
-type UserRole = 'free_brand' | 'pro_brand' | 'creator_owner' | 'admin';
+type UserRole = 'free_brand' | 'pro_brand' | 'creator_owner' | 'creator' | 'admin';
 type ViewMode = 'home' | 'portfolio' | 'creator_onboarding' | 'brand_dashboard' | 'admin_control_room';
 type Creator = typeof CREATORS[number];
 
@@ -44,12 +44,12 @@ const REELS = [
 ];
 
 const CREATORS = [
-  { id: 1, name: 'Aarav Kulkarni', category: 'Restaurants', platform: 'instagram', gender: 'male', pincode: '411017', area: 'Kalewadi', followers: '248K', rate: '₹15,000', rating: 4.9, img: 'https://images.pexels.com/photos/5528969/pexels-photo-5528969.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
-  { id: 2, name: 'Sanya Patil', category: 'Cafes', platform: 'instagram', gender: 'female', pincode: '411057', area: 'Wakad', followers: '512K', rate: '₹28,000', rating: 5.0, img: 'https://images.pexels.com/photos/6497114/pexels-photo-6497114.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
-  { id: 3, name: 'Rohan Deshmukh', category: 'Pubs', platform: 'youtube', gender: 'male', pincode: '411045', area: 'Baner', followers: '1.2M', rate: '₹45,000', rating: 4.8, img: 'https://images.pexels.com/photos/16160801/pexels-photo-16160801.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
-  { id: 4, name: 'Meera Joshi', category: 'Cloud Kitchens', platform: 'facebook', gender: 'female', pincode: '411017', area: 'Kalewadi', followers: '186K', rate: '₹9,500', rating: 4.7, img: 'https://images.pexels.com/photos/19279538/pexels-photo-19279538.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
-  { id: 5, name: 'Karan Mehta', category: 'Restaurants', platform: 'youtube', gender: 'male', pincode: '411057', area: 'Wakad', followers: '780K', rate: '₹32,000', rating: 4.9, img: 'https://images.pexels.com/photos/2101154/pexels-photo-2101154.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
-  { id: 6, name: 'Priya Nair', category: 'Cafes', platform: 'instagram', gender: 'female', pincode: '411045', area: 'Baner', followers: '340K', rate: '₹18,000', rating: 4.8, img: 'https://images.pexels.com/photos/34930167/pexels-photo-34930167.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: false },
+  { id: 1, name: 'Aarav Kulkarni', category: 'Restaurants', subcategory: 'Food Influencer', platform: 'instagram', gender: 'male', pincode: '411017', area: 'Kalewadi', followers: '248K', rate: '₹15,000', rating: 4.9, img: 'https://images.pexels.com/photos/5528969/pexels-photo-5528969.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
+  { id: 2, name: 'Sanya Patil', category: 'Cafes', subcategory: 'Reel Maker', platform: 'instagram', gender: 'female', pincode: '411057', area: 'Wakad', followers: '512K', rate: '₹28,000', rating: 5.0, img: 'https://images.pexels.com/photos/6497114/pexels-photo-6497114.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
+  { id: 3, name: 'Rohan Deshmukh', category: 'Pubs', subcategory: 'Reel Maker', platform: 'youtube', gender: 'male', pincode: '411045', area: 'Baner', followers: '1.2M', rate: '₹45,000', rating: 4.8, img: 'https://images.pexels.com/photos/16160801/pexels-photo-16160801.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
+  { id: 4, name: 'Meera Joshi', category: 'Cloud Kitchens', subcategory: 'Digital Marketer', platform: 'facebook', gender: 'female', pincode: '411017', area: 'Kalewadi', followers: '186K', rate: '₹9,500', rating: 4.7, img: 'https://images.pexels.com/photos/19279538/pexels-photo-19279538.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
+  { id: 5, name: 'Karan Mehta', category: 'Restaurants', subcategory: 'Food Influencer', platform: 'youtube', gender: 'male', pincode: '411057', area: 'Wakad', followers: '780K', rate: '₹32,000', rating: 4.9, img: 'https://images.pexels.com/photos/2101154/pexels-photo-2101154.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: true },
+  { id: 6, name: 'Priya Nair', category: 'Cafes', subcategory: 'Freelance Marketing Agent', platform: 'instagram', gender: 'female', pincode: '411045', area: 'Baner', followers: '340K', rate: '₹18,000', rating: 4.8, img: 'https://images.pexels.com/photos/34930167/pexels-photo-34930167.jpeg?auto=compress&cs=tinysrgb&h=300&w=300', verified: false },
 ];
 
 const PARTNERS = [
@@ -376,13 +376,32 @@ function Section3HowItWorks() {
 // ─────────────────────────────────────────────────────────────
 
 const CATEGORIES = ['All', 'Restaurants', 'Cafes', 'Pubs', 'Cloud Kitchens'];
+const SUBCATEGORIES = ['All', 'Food Influencer', 'Reel Maker', 'Digital Marketer', 'Freelance Marketing Agent'];
+const PUNE_CITIES = ['All', 'Pune'];
+const FOLLOWER_BANDS = [
+  { value: 'all', label: 'Any followers' },
+  { value: '0-200', label: 'Under 200K' },
+  { value: '200-500', label: '200K – 500K' },
+  { value: '500-1000', label: '500K – 1M' },
+  { value: '1000+', label: 'Above 1M' },
+];
+
+function followerCount(s: string): number {
+  const n = parseFloat(s);
+  return s.includes('M') ? n * 1000 : n;
+}
 
 function Section4ReelsAndCreators({ filter, onInspectCreator }: { filter: string; onInspectCreator: (c: Creator) => void }) {
+  const [fCity, setFCity] = useState('All');
   const [fPincode, setFPincode] = useState('');
   const [fCategory, setFCategory] = useState('All');
+  const [fSubcategory, setFSubcategory] = useState('All');
   const [fPlatform, setFPlatform] = useState('all');
   const [fGender, setFGender] = useState('all');
-  const [fSort, setFSort] = useState('followers');
+  const [fFollowerBand, setFFollowerBand] = useState('all');
+  const [fMinPrice, setFMinPrice] = useState('');
+  const [fMaxPrice, setFMaxPrice] = useState('');
+  const [fSort, setFSort] = useState('followers-high');
   const [activeReel, setActiveReel] = useState<number | null>(null);
 
   const platformFilter = filter !== 'all' ? filter : fPlatform;
@@ -391,19 +410,32 @@ function Section4ReelsAndCreators({ filter, onInspectCreator }: { filter: string
     let list = CREATORS.filter((c) => {
       if (fPincode && c.pincode !== fPincode) return false;
       if (fCategory !== 'All' && c.category !== fCategory) return false;
+      if (fSubcategory !== 'All' && c.subcategory !== fSubcategory) return false;
       if (platformFilter !== 'all' && c.platform !== platformFilter) return false;
       if (fGender !== 'all' && c.gender !== fGender) return false;
+      const fc = followerCount(c.followers);
+      if (fFollowerBand === '0-200' && fc >= 200) return false;
+      if (fFollowerBand === '200-500' && (fc < 200 || fc >= 500)) return false;
+      if (fFollowerBand === '500-1000' && (fc < 500 || fc >= 1000)) return false;
+      if (fFollowerBand === '1000+' && fc < 1000) return false;
+      const rate = parseFloat(c.rate.replace(/[^\d]/g, ''));
+      if (fMinPrice && rate < parseFloat(fMinPrice)) return false;
+      if (fMaxPrice && rate > parseFloat(fMaxPrice)) return false;
       return true;
     });
     list = [...list].sort((a, b) => {
-      const af = parseFloat(a.followers) * (a.followers.includes('M') ? 1000 : 1);
-      const bf = parseFloat(b.followers) * (b.followers.includes('M') ? 1000 : 1);
+      const af = followerCount(a.followers);
+      const bf = followerCount(b.followers);
       if (fSort === 'price-low') return parseFloat(a.rate.replace(/[^\d]/g, '')) - parseFloat(b.rate.replace(/[^\d]/g, ''));
       if (fSort === 'price-high') return parseFloat(b.rate.replace(/[^\d]/g, '')) - parseFloat(a.rate.replace(/[^\d]/g, ''));
+      if (fSort === 'followers-low') return af - bf;
+      if (fSort === 'followers-high') return bf - af;
+      if (fSort === 'rating-low') return a.rating - b.rating;
+      if (fSort === 'rating-high') return b.rating - a.rating;
       return bf - af;
     });
     return list;
-  }, [fPincode, fCategory, platformFilter, fGender, fSort]);
+  }, [fPincode, fCategory, fSubcategory, platformFilter, fGender, fFollowerBand, fMinPrice, fMaxPrice, fSort]);
 
   const PlatformIcon = (c: string) => c === 'instagram' ? Instagram : c === 'facebook' ? Facebook : Youtube;
 
@@ -452,15 +484,21 @@ function Section4ReelsAndCreators({ filter, onInspectCreator }: { filter: string
           <div className="flex items-center gap-2 text-gold-400 text-sm font-medium mr-2">
             <Filter className="w-4 h-4" /> Filters
           </div>
+          <select value={fCity} onChange={e => setFCity(e.target.value)} className="bg-ink-800 text-sand-100 text-sm px-4 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 cursor-pointer">
+            {PUNE_CITIES.map(c => <option key={c} value={c}>{c === 'All' ? 'All Cities' : c}</option>)}
+          </select>
           <input
             type="text"
-            placeholder="Pincode"
+            placeholder="Pincode (e.g. 411017)"
             value={fPincode}
             onChange={e => setFPincode(e.target.value)}
-            className="bg-ink-800 text-sand-100 text-sm px-4 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 w-28"
+            className="bg-ink-800 text-sand-100 text-sm px-4 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 w-44"
           />
           <select value={fCategory} onChange={e => setFCategory(e.target.value)} className="bg-ink-800 text-sand-100 text-sm px-4 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 cursor-pointer">
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {CATEGORIES.map(c => <option key={c} value={c}>{c === 'All' ? 'All Categories' : c}</option>)}
+          </select>
+          <select value={fSubcategory} onChange={e => setFSubcategory(e.target.value)} className="bg-ink-800 text-sand-100 text-sm px-4 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 cursor-pointer">
+            {SUBCATEGORIES.map(s => <option key={s} value={s}>{s === 'All' ? 'All Subcategories' : s}</option>)}
           </select>
           <select value={fPlatform} onChange={e => setFPlatform(e.target.value)} className="bg-ink-800 text-sand-100 text-sm px-4 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 cursor-pointer">
             <option value="all">All Platforms</option>
@@ -473,10 +511,36 @@ function Section4ReelsAndCreators({ filter, onInspectCreator }: { filter: string
             <option value="male">Male</option>
             <option value="female">Female</option>
           </select>
+          <select value={fFollowerBand} onChange={e => setFFollowerBand(e.target.value)} className="bg-ink-800 text-sand-100 text-sm px-4 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 cursor-pointer">
+            {FOLLOWER_BANDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+          <div className="flex items-center gap-1.5">
+            <span className="text-sand-500 text-xs">₹</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="Min"
+              value={fMinPrice}
+              onChange={e => setFMinPrice(e.target.value)}
+              className="bg-ink-800 text-sand-100 text-sm px-3 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 w-20"
+            />
+            <span className="text-sand-500 text-xs">–</span>
+            <input
+              type="number"
+              min="0"
+              placeholder="Max"
+              value={fMaxPrice}
+              onChange={e => setFMaxPrice(e.target.value)}
+              className="bg-ink-800 text-sand-100 text-sm px-3 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 w-20"
+            />
+          </div>
           <select value={fSort} onChange={e => setFSort(e.target.value)} className="bg-ink-800 text-sand-100 text-sm px-4 py-2 rounded-lg outline-none border border-ink-600 focus:border-gold-600 cursor-pointer ml-auto">
-            <option value="followers">Sort: Followers</option>
+            <option value="followers-high">Followers: High to Low</option>
+            <option value="followers-low">Followers: Low to High</option>
             <option value="price-low">Price: Low to High</option>
             <option value="price-high">Price: High to Low</option>
+            <option value="rating-high">Rating: High to Low</option>
+            <option value="rating-low">Rating: Low to High</option>
           </select>
         </div>
 
@@ -1037,6 +1101,279 @@ function UpiQrModal({ open, onClose, onVerified, tierLabel, price }: {
 // CREATOR PORTFOLIO VIEW
 // ─────────────────────────────────────────────────────────────
 
+function BrandHubView({ user, onExit }: { user: AuthUser | null; onExit: () => void }) {
+  const BRAND_TYPES = ['Hotel', 'Restaurant', 'Pub', 'Resort', 'Cloud Kitchen', 'Food Stall', 'Others'];
+  const [brandName, setBrandName] = useState(user?.venueName ?? user?.fullName ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [address, setAddress] = useState('Kalewadi, Pune, Maharashtra');
+  const [brandType, setBrandType] = useState('Restaurant');
+  const [venueImages, setVenueImages] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.id) {
+      brandHubService.getBrandProfile(user.id).then(p => {
+        if (!p) return;
+        setBrandName(p.venueName ?? p.fullName ?? '');
+        setPhone(p.phone ?? '');
+        if (p.address) setAddress(p.address);
+        if (p.brandType) setBrandType(p.brandType);
+        if (p.venueImages?.length) setVenueImages(p.venueImages);
+      }).catch(() => {});
+    }
+  }, [user?.id]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      if (user?.id) {
+        await brandHubService.saveBrandProfile(user.id, { brandName, phone, address, brandType, venueImages });
+      }
+      setSavedAt(new Date().toLocaleTimeString());
+      telemetry.logActivity({
+        actorId: user?.id ?? null,
+        actorEmail: user?.email ?? null,
+        activityType: 'brand_profile_update',
+        meta: { brandName, brandType, address },
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addImage = () => {
+    const url = prompt('Paste venue image URL (https://…)')?.trim();
+    if (url) setVenueImages(prev => [...prev, url].slice(0, 6));
+  };
+
+  return (
+    <div className="min-h-screen bg-ink-950 text-sand-50">
+      <div className="sticky top-0 z-50 bg-ink-950/90 backdrop-blur-xl border-b border-gold-700/20 px-4 py-3 flex items-center justify-between">
+        <button onClick={onExit} className="flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full bg-ink-800 text-gold-300 border border-gold-600/40 hover:bg-ink-700 transition">
+          <ArrowLeft className="w-4 h-4" /> Back to Marketplace
+        </button>
+        <div className="flex items-center gap-2">
+          <LayoutDashboard className="w-4 h-4 text-gold-400" />
+          <span className="font-display text-sm font-bold">Brand Hub</span>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-6 py-10">
+        <header className="mb-8">
+          <h1 className="font-display text-3xl md:text-4xl font-bold gold-text">Brand Profile & Campaign Dashboard</h1>
+          <p className="text-sand-400 text-sm mt-2">Manage your brand identity. Editable anytime. Required to launch campaigns and receive creator enquiries.</p>
+        </header>
+
+        <div className="grid lg:grid-cols-[1.6fr_1fr] gap-6 items-start">
+          {/* Profile form */}
+          <div className="glass-dark rounded-2xl border border-gold-700/20 p-6 space-y-5">
+            <h2 className="font-display text-lg font-bold flex items-center gap-2"><Building2 className="w-5 h-5 text-gold-400" /> Brand Details</h2>
+
+            <div>
+              <label className="text-sand-400 text-xs font-medium mb-1.5 block">Brand Name</label>
+              <input value={brandName} onChange={e => setBrandName(e.target.value)} placeholder="e.g. The Sunset Bistro"
+                className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600" />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sand-400 text-xs font-medium mb-1.5 block">Contact Number</label>
+                <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 …"
+                  className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600" />
+              </div>
+              <div>
+                <label className="text-sand-400 text-xs font-medium mb-1.5 block">Brand Type</label>
+                <select value={brandType} onChange={e => setBrandType(e.target.value)}
+                  className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600 cursor-pointer">
+                  {BRAND_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sand-400 text-xs font-medium mb-1.5 block">Address</label>
+              <textarea value={address} onChange={e => setAddress(e.target.value)} rows={2} placeholder="Full venue address"
+                className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600 resize-none" />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sand-400 text-xs font-medium">Optional Venue Images</label>
+                <button onClick={addImage} className="text-xs text-gold-300 flex items-center gap-1 hover:text-gold-200">
+                  <Plus className="w-3.5 h-3.5" /> Add image
+                </button>
+              </div>
+              {venueImages.length === 0 ? (
+                <div className="rounded-xl border-2 border-dashed border-ink-600 p-6 text-center text-sand-500 text-sm">
+                  No venue images yet. Click "Add image" to paste image URLs.
+                </div>
+              ) : (
+                <div className="grid grid-cols-3 gap-3">
+                  {venueImages.map((img, i) => (
+                    <div key={i} className="relative group rounded-xl overflow-hidden aspect-square">
+                      <img src={img} alt={`Venue ${i + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                      <button onClick={() => setVenueImages(prev => prev.filter((_, idx) => idx !== i))}
+                        className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink-950/80 text-sand-100 flex items-center justify-center hover:bg-red-500/80 transition">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button onClick={handleSave} disabled={saving}
+                className="bg-gradient-to-r from-gold-500 to-gold-700 text-ink-950 font-semibold px-6 py-3 rounded-full hover:shadow-glow transition-shadow flex items-center gap-2 disabled:opacity-50">
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                {saving ? 'Saving…' : 'Save Brand Profile'}
+              </button>
+              {savedAt && !error && (
+                <span className="text-green-400 text-xs flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Saved at {savedAt}
+                </span>
+              )}
+              {error && <span className="text-red-400 text-xs">{error}</span>}
+            </div>
+          </div>
+
+          {/* Right rail — membership + campaigns */}
+          <div className="space-y-5">
+            <div className="glass-dark rounded-2xl border border-gold-700/20 p-5">
+              <h3 className="font-display text-base font-bold mb-3 flex items-center gap-2"><Crown className="w-4 h-4 text-gold-400" /> Membership</h3>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-sand-400">Current tier</span>
+                <span className={`font-semibold px-3 py-1 rounded-full text-xs ${user?.role === 'pro_brand' ? 'bg-gold-500/20 text-gold-300 border border-gold-600/40' : 'bg-ink-800 text-sand-400 border border-ink-600'}`}>
+                  {user?.role === 'pro_brand' ? 'Pro Brand' : 'Free Brand'}
+                </span>
+              </div>
+              <p className="text-xs text-sand-500 mt-3">
+                {user?.role === 'pro_brand'
+                  ? 'Pro active. Direct contacts, WhatsApp, and enquiries unlocked.'
+                  : 'Free tier: browse only. Upgrade to unlock creator contacts and direct enquiries.'}
+              </p>
+            </div>
+
+            <div className="glass-dark rounded-2xl border border-gold-700/20 p-5">
+              <h3 className="font-display text-base font-bold mb-3 flex items-center gap-2"><Briefcase className="w-4 h-4 text-gold-400" /> Campaigns</h3>
+              <p className="text-xs text-sand-500 mb-3">Launch a campaign from your brand profile to receive creator pitches.</p>
+              <button
+                onClick={() => telemetry.logActivity({ actorId: user?.id ?? null, actorEmail: user?.email ?? null, activityType: 'campaign_intent', meta: { brandName } })}
+                className="w-full bg-ink-800 text-gold-300 border border-gold-600/40 text-sm font-semibold py-2.5 rounded-xl hover:bg-ink-700 transition flex items-center justify-center gap-2"
+              >
+                <Sparkles className="w-4 h-4" /> New Campaign (Coming Soon)
+              </button>
+            </div>
+
+            <div className="glass-dark rounded-2xl border border-gold-700/20 p-5">
+              <h3 className="font-display text-base font-bold mb-3 flex items-center gap-2"><Phone className="w-4 h-4 text-gold-400" /> KROLAB Support</h3>
+              <p className="text-xs text-sand-400">Need help with your profile or Pro upgrade?</p>
+              <a href="tel:8750481256" className="text-gold-300 text-sm font-semibold mt-2 block">8750481256</a>
+              <a href="mailto:support@krolab.in" className="text-gold-300 text-sm font-semibold block">support@krolab.in</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CreatorStudioView({ user, onExit }: { user: AuthUser | null; onExit: () => void }) {
+  const CREATOR_TYPES = ['Food Influencer', 'Reel Maker', 'Digital Marketer', 'Freelance Marketing Agent'];
+  const [fullName, setFullName] = useState(user?.fullName ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [creatorType, setCreatorType] = useState('Food Influencer');
+  const [igHandle, setIgHandle] = useState('');
+  const [igFollowers, setIgFollowers] = useState('');
+  const [bio, setBio] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  return (
+    <div className="min-h-screen bg-ink-950 text-sand-50">
+      <div className="sticky top-0 z-50 bg-ink-950/90 backdrop-blur-xl border-b border-gold-700/20 px-4 py-3 flex items-center justify-between">
+        <button onClick={onExit} className="flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full bg-ink-800 text-gold-300 border border-gold-600/40 hover:bg-ink-700 transition">
+          <ArrowLeft className="w-4 h-4" /> Back to Marketplace
+        </button>
+        <div className="flex items-center gap-2">
+          <Clapperboard className="w-4 h-4 text-gold-400" />
+          <span className="font-display text-sm font-bold">Creator Studio</span>
+        </div>
+      </div>
+
+      <div className="max-w-3xl mx-auto px-6 py-10">
+        <header className="mb-8">
+          <h1 className="font-display text-3xl md:text-4xl font-bold gold-text">Creator Studio</h1>
+          <p className="text-sand-400 text-sm mt-2">Build your designer media-kit portfolio. Free to register and edit anytime.</p>
+        </header>
+
+        <div className="glass-dark rounded-2xl border border-gold-700/20 p-6 space-y-5">
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sand-400 text-xs font-medium mb-1.5 block">Full Name</label>
+              <input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Your full name"
+                className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600" />
+            </div>
+            <div>
+              <label className="text-sand-400 text-xs font-medium mb-1.5 block">Contact Number</label>
+              <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+91 …"
+                className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sand-400 text-xs font-medium mb-1.5 block">Creator Type</label>
+            <select value={creatorType} onChange={e => setCreatorType(e.target.value)}
+              className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600 cursor-pointer">
+              {CREATOR_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sand-400 text-xs font-medium mb-1.5 block">Instagram ID</label>
+              <input value={igHandle} onChange={e => setIgHandle(e.target.value)} placeholder="@yourhandle"
+                className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600" />
+            </div>
+            <div>
+              <label className="text-sand-400 text-xs font-medium mb-1.5 block">Instagram Followers</label>
+              <input value={igFollowers} onChange={e => setIgFollowers(e.target.value)} placeholder="e.g. 248K"
+                className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sand-400 text-xs font-medium mb-1.5 block">Bio</label>
+            <textarea value={bio} onChange={e => setBio(e.target.value)} rows={3} placeholder="Short creator bio"
+              className="w-full bg-ink-800 text-sand-100 text-sm px-4 py-3 rounded-xl outline-none border border-ink-600 focus:border-gold-600 resize-none" />
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={() => {
+                setSaving(true);
+                telemetry.logActivity({ actorId: user?.id ?? null, actorEmail: user?.email ?? null, activityType: 'creator_profile_update', meta: { fullName, creatorType } });
+                setTimeout(() => { setSaving(false); setSavedAt(new Date().toLocaleTimeString()); }, 600);
+              }}
+              disabled={saving}
+              className="bg-gradient-to-r from-gold-500 to-gold-700 text-ink-950 font-semibold px-6 py-3 rounded-full hover:shadow-glow transition-shadow flex items-center gap-2 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+              {saving ? 'Saving…' : 'Save Profile'}
+            </button>
+            {savedAt && <span className="text-green-400 text-xs flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> Saved at {savedAt}</span>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreatorPortfolioView({
   creator, userRole, onBack, onUnlockPro,
 }: {
@@ -1375,12 +1712,14 @@ function CreatorPortfolioView({
                   href={`https://wa.me/918750481256?text=Hi%20${encodeURIComponent(editData.name)},%20I'd%20like%20to%20discuss%20a%20table%20shoot%20collaboration%20via%20KROLAB`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => telemetry.logActivity({ targetProfileId: String(creator.id), targetName: creator.name, activityType: 'whatsapp_click', meta: { platform: creator.platform } })}
                   className="w-full bg-green-600 text-white font-semibold py-3 rounded-full hover:bg-green-500 transition-colors flex items-center justify-center gap-2 mb-3"
                 >
                   <MessageSquare className="w-4 h-4" /> Chat Directly on WhatsApp
                 </a>
                 <a
                   href={`tel:${editData.phone.replace(/\s/g, '')}`}
+                  onClick={() => telemetry.logActivity({ targetProfileId: String(creator.id), targetName: creator.name, activityType: 'phone_click', meta: { platform: creator.platform } })}
                   className={`w-full font-semibold py-3 rounded-full transition-colors flex items-center justify-center gap-2 mb-4 ${isDark ? 'bg-ink-700 text-gold-300 hover:bg-ink-600' : 'bg-sand-200 text-ink-800 hover:bg-sand-300'}`}
                 >
                   <Phone className="w-4 h-4" /> Call Creator Direct
@@ -1492,6 +1831,7 @@ export default function App() {
   const [platformFilter, setPlatformFilter] = useState('all');
   const [currentView, setCurrentView] = useState<ViewMode>('home');
   const [selectedCreator, setSelectedCreator] = useState<Creator>(CREATORS[0]);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [userRole, setUserRole] = useState<UserRole>(() => {
     const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('krolab_role') : null;
     return (saved as UserRole) || 'free_brand';
@@ -1501,9 +1841,26 @@ export default function App() {
     try { localStorage.setItem('krolab_role', userRole); } catch { /* ignore */ }
   }, [userRole]);
 
+  useEffect(() => {
+    authService.getCurrentUser().then(u => {
+      if (u) {
+        setUser(u);
+        setUserRole(u.role);
+      }
+    }).catch(() => {});
+  }, []);
+
   const goToPortfolio = (c: Creator) => {
     setSelectedCreator(c);
     setCurrentView('portfolio');
+    telemetry.logActivity({
+      actorEmail: user?.email ?? null,
+      actorId: user?.id ?? null,
+      targetProfileId: String(c.id),
+      targetName: c.name,
+      activityType: 'profile_view',
+      meta: { category: c.category, platform: c.platform },
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -1530,6 +1887,10 @@ export default function App() {
         </>
       ) : currentView === 'admin_control_room' ? (
         <AdminControlRoom onExit={goHome} />
+      ) : currentView === 'brand_dashboard' ? (
+        <BrandHubView user={user} onExit={goHome} />
+      ) : currentView === 'creator_onboarding' ? (
+        <CreatorStudioView user={user} onExit={goHome} />
       ) : (
         <CreatorPortfolioView
           creator={selectedCreator}
