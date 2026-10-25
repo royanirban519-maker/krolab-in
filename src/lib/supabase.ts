@@ -546,7 +546,7 @@ export const brandHubService = {
       if (error) throw new Error(error.message);
       return;
     }
-    const user = lsGet<AuthUser>(LS.user, null);
+    const user = lsGet<AuthUser | null>(LS.user, null);
     if (user) {
       user.venueName = input.brandName;
       user.phone = input.phone;
@@ -577,7 +577,7 @@ export const brandHubService = {
         createdAt: data.created_at as string,
       };
     }
-    const user = lsGet<AuthUser>(LS.user, null);
+    const user = lsGet<AuthUser | null>(LS.user, null);
     if (!user || user.id !== userId) return null;
     return {
       id: user.id, email: user.email, fullName: user.fullName, role: user.role,
